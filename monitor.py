@@ -5,7 +5,7 @@ from playwright.sync_api import sync_playwright
 TELEGRAM_TOKEN = os.environ["TELEGRAM_TOKEN"]
 CHAT_ID = os.environ["CHAT_ID"]
 
-# Pagina albo pretorio ASL Bari - elenco concorsi (contenuto via JavaScript)
+# Endpoint elenco repertori/concorsi ASL Bari
 URL = "https://www.sanita.puglia.it/aol/listConcorso"
 
 def send_telegram(message):
@@ -16,8 +16,23 @@ def get_rendered_text():
     with sync_playwright() as p:
         browser = p.chromium.launch()
         page = browser.new_page()
-        page.goto(URL, wait_until="networkidle", timeout=90000)
-        # aspetta il caricamento dei dati dinamici
+        page.goto(URL, wait_until="domcontentloaded", timeout=90000)
+        # attende caricamento iniziale dei dati
+        page.wait_for_timeout(8000)
+
+        # Prova a compilare il campo "Oggetto" con "banca dati" e premere Ricerca
+        try:
+            # cerca un campo input di testo per l'oggetto
+            page.fill("input[name='oggetto'], input#oggetto, textarea[name='oggetto']", "banca dati")
+        except Exception as e:
+            print(f"(campo oggetto non trovato: {e})")
+
+        try:
+            # clicca il pulsante Ricerca
+            page.click("text=Ricerca", timeout=5000)
+        except Exception as e:
+            print(f"(pulsante Ricerca non cliccato: {e})")
+
         page.wait_for_timeout(8000)
         text = page.content().lower()
         browser.close()
@@ -31,26 +46,24 @@ def main():
         print(f"Errore Playwright: {e}")
         return
 
-    # Cerca un repertorio "banca dati" legato alla prova SCRITTA del concorso 1000 posti
     has_banca = "banca dati" in content
-    # segnali specifici della SCRITTA (non preselettiva)
     has_scritta = "prova scritta" in content or "scritta" in content
-    # segnali del concorso 1000 infermieri
-    has_1000 = "1000 posti" in content or "1.000 posti" in content or "mille" in content
+    has_1000 = "1000 posti" in content or "1.000 posti" in content
 
-    print(f"banca dati: {has_banca} | scritta: {has_scritta} | 1000: {has_1000}")
+    print(f"banca dati: {has_banca} | scritta: {has_scritta} | 1000posti: {has_1000}")
+    # debug: stampa quante volte appare "banca dati"
+    print(f"occorrenze 'banca dati': {content.count('banca dati')}")
 
-    # Notifica FORTE: banca dati + scritta presenti insieme
     if has_banca and has_scritta:
         send_telegram(
             "🚨🚨 POSSIBILE BANCA DATI PROVA SCRITTA! 🚨🚨\n\n"
-            "Nell'albo concorsi ASL Bari compare un riferimento a 'banca dati' + 'prova scritta'.\n\n"
+            "Nell'albo concorsi ASL Bari compare 'banca dati' + 'prova scritta'.\n\n"
             "👉 Controlla e scarica subito:\n"
-            "https://www.sanita.puglia.it/web/asl-bari/concorsi-e-avvisi"
+            "https://www.sanita.puglia.it/aol/listConcorso"
         )
-        print(">>> NOTIFICA FORTE INVIATA!")
+        print(">>> NOTIFICA INVIATA!")
     else:
-        print("Nessuna novita rilevante sulla banca dati scritta.")
+        print("Nessuna novita rilevante.")
 
 if __name__ == "__main__":
     main()
