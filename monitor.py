@@ -5,7 +5,7 @@ import os
 TELEGRAM_TOKEN = os.environ["TELEGRAM_TOKEN"]
 CHAT_ID = os.environ["CHAT_ID"]
 URL_DA_MONITORARE = "https://www.sanita.puglia.it/web/asl-bari/concorsi-e-avvisi"
-KEYWORD = "infermier"  # parola chiave da cercare nella pagina
+KEYWORD = "posti"  # parola chiave da cercare nella pagina
 
 def get_page_content():
     headers = {"User-Agent": "Mozilla/5.0"}
@@ -23,7 +23,7 @@ def main():
     # Cerca la keyword "banca dati" nella pagina
     if KEYWORD in content:
         # Controlla se contiene riferimento alla prova scritta
-        if "scritta" in content or "27 giugno" in content or "3000" in content or "bari" in content:
+        if "scritta" in content or "27 giugno" in content or "3000" in content or "data" in content:
             send_telegram(
                 "🚨 ATTENZIONE! La banca dati della prova scritta sembra essere apparsa sul sito ASL Bari!\n\n"
                 "👉 Controlla subito: https://www.sanita.puglia.it/web/asl-bari/concorsi-e-avvisi"
