@@ -1,0 +1,27 @@
+name: Monitor ASL Bari Banca Dati
+
+on:
+  schedule:
+    - cron: '*/5 * * * *'  # ogni 5 minuti
+  workflow_dispatch:  # permette di avviarlo manualmente
+
+jobs:
+  monitor:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install requests
+
+      - name: Run monitor
+        env:
+          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+          CHAT_ID: ${{ secrets.CHAT_ID }}
+        run: python monitor.py
