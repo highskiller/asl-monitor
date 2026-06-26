@@ -5,7 +5,7 @@ import os
 TELEGRAM_TOKEN = os.environ["TELEGRAM_TOKEN"]
 CHAT_ID = os.environ["CHAT_ID"]
 URL_DA_MONITORARE = "https://www.sanita.puglia.it/web/asl-bari/concorsi-e-avvisi"
-KEYWORD = "banca dati"  # parola chiave da cercare nella pagina
+KEYWORD = "infermier"  # parola chiave da cercare nella pagina
 
 def get_page_content():
     headers = {"User-Agent": "Mozilla/5.0"}
