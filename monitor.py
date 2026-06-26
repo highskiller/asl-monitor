@@ -7,45 +7,45 @@ CHAT_ID = os.environ["CHAT_ID"]
 
 URL = "https://www.sanita.puglia.it/aol/listConcorso"
 
-def send_telegram(message):
-    url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
-    requests.post(url, data={"chat_id": CHAT_ID, "text": message})
-
 def main():
     with sync_playwright() as p:
         browser = p.chromium.launch()
         page = browser.new_page()
         page.goto(URL, wait_until="domcontentloaded", timeout=90000)
-        page.wait_for_timeout(10000)
+        page.wait_for_timeout(8000)
 
-        # DIAGNOSTICA: elenca iframe presenti
-        frames = page.frames
-        print(f"=== NUMERO FRAME: {len(frames)} ===")
-        for i, f in enumerate(frames):
-            print(f"Frame {i}: {f.url}")
+        print(f"URL attuale: {page.url}")
 
-        # DIAGNOSTICA: elenca tutti gli input della pagina principale
-        print("=== INPUT NELLA PAGINA ===")
-        inputs = page.query_selector_all("input, textarea, button")
-        for el in inputs[:30]:
-            tag = el.evaluate("e => e.tagName")
-            name = el.get_attribute("name")
-            eid = el.get_attribute("id")
-            ptext = el.get_attribute("placeholder")
-            print(f"{tag} name={name} id={eid} placeholder={ptext}")
-
-        # DIAGNOSTICA: cerca testo 'banca dati' nell'intera pagina e nei frame
-        total = 0
-        for f in frames:
+        # Stampa il testo di tutti i bottoni (per trovare ASL Bari)
+        print("=== TESTO DEI BOTTONI ===")
+        buttons = page.query_selector_all("button, a, div[onclick], span[onclick]")
+        for i, el in enumerate(buttons[:40]):
             try:
-                t = f.content().lower()
-                c = t.count("banca dati")
-                if c > 0:
-                    print(f">>> Frame {f.url} contiene 'banca dati' x{c}")
-                total += c
-            except Exception as e:
+                txt = (el.inner_text() or "").strip()
+                if txt:
+                    print(f"[{i}] '{txt}'")
+            except Exception:
                 pass
-        print(f"=== TOTALE occorrenze 'banca dati' in tutti i frame: {total} ===")
+
+        # Prova a cliccare su ASL Bari
+        print("=== TENTATIVO CLICK ASL BARI ===")
+        clicked = False
+        for sel in ["text=ASL Bari", "text=Bari", "text=aslbari"]:
+            try:
+                page.click(sel, timeout=4000)
+                print(f"Cliccato con selettore: {sel}")
+                clicked = True
+                break
+            except Exception as e:
+                print(f"  fallito {sel}")
+
+        if clicked:
+            page.wait_for_timeout(8000)
+            print(f"Nuovo URL: {page.url}")
+            text = page.content().lower()
+            print(f"occorrenze 'banca dati': {text.count('banca dati')}")
+            print(f"occorrenze 'concorso': {text.count('concorso')}")
+            print(f"occorrenze 'infermiere': {text.count('infermiere')}")
 
         browser.close()
 
