@@ -23,7 +23,7 @@ def main():
     # Cerca la keyword "banca dati" nella pagina
     if KEYWORD in content:
         # Controlla se contiene riferimento alla prova scritta
-        if "scritta" in content or "27 giugno" in content or "3000" in content:
+        if "scritta" in content or "27 giugno" in content or "3000" in content or "bari" in content:
             send_telegram(
                 "🚨 ATTENZIONE! La banca dati della prova scritta sembra essere apparsa sul sito ASL Bari!\n\n"
                 "👉 Controlla subito: https://www.sanita.puglia.it/web/asl-bari/concorsi-e-avvisi"
