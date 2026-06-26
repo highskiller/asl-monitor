@@ -7,47 +7,69 @@ CHAT_ID = os.environ["CHAT_ID"]
 
 URL = "https://www.sanita.puglia.it/aol/listConcorso"
 
+def send_telegram(message):
+    url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
+    requests.post(url, data={"chat_id": CHAT_ID, "text": message})
+
 def main():
     with sync_playwright() as p:
-        browser = p.chromium.launch()
+        browser = p.chromium.launch(headless=True)
         page = browser.new_page()
         page.goto(URL, wait_until="domcontentloaded", timeout=90000)
         page.wait_for_timeout(8000)
 
-        print(f"URL attuale: {page.url}")
+        # 1) seleziona ASL Bari
+        page.click("text=ASL Bari", timeout=10000)
+        page.wait_for_timeout(8000)
 
-        # Stampa il testo di tutti i bottoni (per trovare ASL Bari)
-        print("=== TESTO DEI BOTTONI ===")
-        buttons = page.query_selector_all("button, a, div[onclick], span[onclick]")
-        for i, el in enumerate(buttons[:40]):
-            try:
-                txt = (el.inner_text() or "").strip()
-                if txt:
-                    print(f"[{i}] '{txt}'")
-            except Exception:
-                pass
+        # 2) compila il campo Oggetto con "banca dati"
+        filled = False
+        try:
+            campo = page.locator("mat-form-field:has-text('Oggetto') input").first
+            campo.fill("banca dati", timeout=5000)
+            filled = True
+        except Exception:
+            for i in range(8):
+                try:
+                    page.fill(f"#mat-input-{i}", "banca dati", timeout=2000)
+                    filled = True
+                    break
+                except Exception:
+                    pass
 
-        # Prova a cliccare su ASL Bari
-        print("=== TENTATIVO CLICK ASL BARI ===")
-        clicked = False
-        for sel in ["text=ASL Bari", "text=Bari", "text=aslbari"]:
-            try:
-                page.click(sel, timeout=4000)
-                print(f"Cliccato con selettore: {sel}")
-                clicked = True
-                break
-            except Exception as e:
-                print(f"  fallito {sel}")
-
-        if clicked:
+        # 3) clicca Ricerca
+        if filled:
+            for sel in ["button:has-text('Ricerca')", "text=Ricerca"]:
+                try:
+                    page.click(sel, timeout=3000)
+                    break
+                except Exception:
+                    pass
             page.wait_for_timeout(8000)
-            print(f"Nuovo URL: {page.url}")
-            text = page.content().lower()
-            print(f"occorrenze 'banca dati': {text.count('banca dati')}")
-            print(f"occorrenze 'concorso': {text.count('concorso')}")
-            print(f"occorrenze 'infermiere': {text.count('infermiere')}")
 
+        text = page.content().lower()
         browser.close()
+
+    # Conteggi
+    n_banca = text.count("banca dati")
+    n_scritta = text.count("scritta")
+    n_inf = text.count("infermiere")
+    print(f"banca dati: {n_banca} | scritta: {n_scritta} | infermiere: {n_inf}")
+
+    # SEGNALE: appare la parola "scritta" insieme a "banca dati" e "infermiere"
+    # (la banca dati della preselettiva NON contiene "scritta")
+    if n_banca > 0 and n_scritta > 0 and n_inf > 0:
+        send_telegram(
+            "🚨🚨 BANCA DATI PROVA SCRITTA INFERMIERI PUBBLICATA! 🚨🚨\n\n"
+            "Nell'albo ASL Bari e' comparso un nuovo elemento 'banca dati' "
+            "collegato alla PROVA SCRITTA del concorso infermieri.\n\n"
+            "👉 Vai subito su:\n"
+            "https://www.sanita.puglia.it/aol/listConcorso\n"
+            "(seleziona ASL Bari, cerca 'banca dati')"
+        )
+        print(">>> NOTIFICA INVIATA!")
+    else:
+        print("Nessuna novita: banca dati scritta non ancora pubblicata.")
 
 if __name__ == "__main__":
     main()
